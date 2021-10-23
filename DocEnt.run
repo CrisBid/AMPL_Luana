@@ -1,0 +1,150 @@
+param maq1 := 3; #DOCAS ENTRADA
+param maq2 := 4; #DOCAS SAIDA
+param nv1 := 15; #CAMINHOES ENTRADA
+param nv2 := 10; #CAMINHOES SAIDA
+param S{i in 1..nv2, j in 1..nv1}; #DEPENDENCIA CAMINHAO SAIDA-ENTRADA
+param p1{i in 1..nv1}; #TEMPO DESCARGA
+param p2{i in 1..nv2}; #TEMPO CARGA
+param d{i in 1..nv2};  #DATA LIMITE PARA SAIR DO CDC
+param w{i in 1..nv2};  #IMPORTANCIA DO CAMINHAO DE SAIDA
+param r{i in 1..nv1};  #DATA DE CHEGADA DO CAMINHAO DE ENTRADA
+
+let {i in 1..nv2, j in 1..nv1} S[i,j] := round(Uniform01());
+let {j in 1..nv1} p1[j] := round(Uniform(1,nv1*2));
+let {i in 1..nv2} p2[i] := round(1.3*Uniform(1,nv2*2));
+let {i in 1..nv2} w[i] := round(2*Uniform(1,nv2));
+let {j in 1..nv1} r[j] := round((0.2*Uniform01())*(sum{i in 1..nv1}p1[i] + sum{i in 1..nv2}p2[i]));
+let {i in 1..nv2} d[i] := round((0.25 + Uniform01())*(sum{j in 1..nv1}p1[j] + sum{j in 1..nv2}p2[j]  + max{j in 1..nv1}r[j]));
+
+
+display maq1;
+display maq2;
+display nv1;
+display nv2;
+display S;
+display p1;
+display p2;
+display w;
+display r;
+display d;
+
+########################################################################################
+
+#CONJUNTOS
+set I := {1..nv1}; #Caminhões de entrada, que devem ser descarregados na maq1
+set J := {1..nv2}; #Caminhões de saída, que devem ser carregados na maq2
+display I;
+display J;
+
+param menor; #menor data de chegada
+param ind; #indice relativo a data de chegada
+param doca1;  #quantidade docas de entrada
+param caminhoes1; #quantidade de caminhoes
+param saida; #para verificar saida
+param time; #relógio para contabilizar o tempo
+param cont_doca; #utilizado para contar quantos valores no vetor tempo estão preenchidos
+param cont_full; #utilizado para contar quantos valores no vetor tempo não estão preenchidos
+param docasocupadas; #docas ocupadas
+param menortempo;
+param docaslivres;
+param totaldocas;
+
+let saida:= 0;
+let time:= 1;
+let cont_doca:= 0;
+let cont_full:= 100;
+let docaslivres:=1;
+
+let doca1 := maq1; #quantidade de docas
+let totaldocas := maq1; #quantidade de docas
+param vetortempo{j in 1..nv1}; #vetor tempo para alocar os tempos de quem foi na doca
+let {j in 1..nv1} vetortempo[j] := 0;  #todos começam com zero
+let docasocupadas := doca1 - 1; #utilizado quando tem uma doca disponível
+
+repeat while saida == 0 #repetir enquanto saida for igual a 0
+{
+	for{j in 1..nv1}
+	{	
+		let menortempo := min{jj in 1..nv1}r[jj];	
+		if r[j] <= time then
+		{
+			if doca1 > 0 then #verificar se a doca está disponível
+			{
+				if r[j] == menortempo then{
+				display r[j];
+				let ind := j; #caminhão com a menor data de chegada
+				display ind;
+				let vetortempo[ind] := p1[ind]; #tempo que o caminhão gasta p/ descarregar
+				let cont_full:= 0;
+					
+				let doca1 := doca1 - 1; #doca foi ocupada
+				let r[ind]:= 1000; #se entrou na doca irá receber indice grande para não entrar novamente
+				display doca1;	
+				}
+			}
+			if doca1 == 0 then #quando não tem mais docas disponíveis
+			{
+				
+				if cont_doca > 0 && cont_doca <= docasocupadas then #quando tem uma doca disponível
+				{
+					let doca1:= doca1 + docaslivres; #tem uma livre então adiciona
+					display doca1;
+					let cont_doca:= 0; #zerar porque foi preenchida
+				}
+				else
+				{
+					let cont_doca:= 0; 
+					let cont_full:= 0;
+					let docaslivres := 0;
+					for{i in 1..nv1}
+					{
+						if vetortempo[i] != 0 then #quantos valores tem diferente de 0
+						{
+							let cont_doca:= cont_doca + 1; #se o valor no vetor tempo não for zero, conta a doca
+							let docaslivres := totaldocas - cont_doca;	
+						}
+					}
+				}
+			}
+		}
+		if cont_full != 100 then
+		{
+			let cont_full:= 0;
+			for{i in 1..nv1}
+			{
+				if vetortempo[i] == 0 then #quantos valores tem diferente de 0
+				{
+					let cont_full:= cont_full + 1; #se o valor no vetor tempo for zero
+				}
+			}
+			if cont_full == nv1 then #quando todo o vetor tempo for 0
+			{
+				let saida:= 1;
+			}
+		}
+	}
+	display vetortempo;
+	for{i in 1..nv1}
+	{
+		if vetortempo[i] != 0 then #utilizado reduzir o tempo no descarregamento
+		{
+			let vetortempo[i]:= vetortempo[i] - 1;
+			if vetortempo[i] == 1 then
+			{
+				for {ii in 1..nv2}
+				{
+					if S[ii, i] == 1 then
+					{
+						let S[ii, i] := 0;
+						display S;
+					}
+				}
+			}
+		}
+	}
+	let time:= time + 1; #utilizado para passar o tempo
+	display time;
+}
+
+
+
