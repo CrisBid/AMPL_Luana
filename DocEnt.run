@@ -58,6 +58,10 @@ param menortempo2;
 param docaslivres2;
 param totaldocas2;
 param coluna2;
+param docas_in{i in 1..maq1};
+param docas_in_ind{i in 1..maq1};
+param docas_out{i in 1..maq2};
+param docas_out_ind{i in 1..maq2};
 
 let saida:= 0;
 let time:= 1;
@@ -65,6 +69,11 @@ let cont_doca:= 0;
 let cont_full:= 100;
 let docaslivres:=1;
 let coluna := 0;
+
+let {i in 1..maq1} docas_in[i] := 0;  #todos começam com zero
+let {i in 1..maq1} docas_in_ind[i] := 0;  #todos começam com zero
+let {i in 1..maq2} docas_out[i] := 0;  #todos começam com zero
+let {i in 1..maq2} docas_out_ind[i] := 0;  #todos começam com zero
 
 let saida2:= 0;
 let cont_doca2:= 0;
@@ -97,7 +106,16 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 				display r[j];
 				let ind := j; #caminhão com a menor data de chegada
 				display ind;
-				let vetortempo[ind] := p1[ind]; #tempo que o caminhão gasta p/ descarregar
+				#let vetortempo[ind] := p1[ind]; #tempo que o caminhão gasta p/ descarregar
+				for{i in 1..maq1}
+				{
+					if docas_in[i] == 0 then #tempo que o caminhão gasta p/ descarregar
+					{
+						let docas_in[i] := p1[ind];
+						let docas_in_ind[i] := ind;
+						break;
+					}
+				}
 				let cont_full:= 0;
 					
 				let doca1 := doca1 - 1; #doca foi ocupada
@@ -119,9 +137,9 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 					let cont_doca:= 0; 
 					let cont_full:= 0;
 					let docaslivres := 0;
-					for{i in 1..nv1}
+					for{i in 1..maq1}
 					{
-						if vetortempo[i] != 0 then #quantos valores tem diferente de 0
+						if docas_in[i] != 0 then #quantos valores tem diferente de 0
 						{
 							let cont_doca:= cont_doca + 1; #se o valor no vetor tempo não for zero, conta a doca
 							let docaslivres := totaldocas - cont_doca;	
@@ -133,35 +151,43 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 		if cont_full != 100 then
 		{
 			let cont_full:= 0;
-			for{i in 1..nv1}
+			for{i in 1..maq1}
 			{
-				if vetortempo[i] == 0 then #quantos valores tem diferente de 0
+				if docas_in[i] == 0 then #quantos valores tem diferente de 0
 				{
 					let cont_full:= cont_full + 1; #se o valor no vetor tempo for zero
 				}
 			}
-			if cont_full == nv1 then #quando todo o vetor tempo for 0
+			if cont_full == maq1 then #quando todo o vetor tempo for 0
 			{
 				let saida:= 1;
 			}
 		}
 	}
-	display vetortempo;
-	for{i in 1..nv1}
+	for{i in 1..maq1}
 	{
-		if vetortempo[i] != 0 then #utilizado reduzir o tempo no descarregamento
+		if docas_in[i] == 0 then #tempo que o caminhão gasta p/ descarregar
+		{			
+			let docas_in_ind[i] := 0;
+		}
+	}
+	display docas_in;
+	display docas_in_ind;
+	for{i in 1..maq1}
+	{
+		if docas_in[i] != 0 then #utilizado reduzir o tempo no descarregamento
 		{
-			let vetortempo[i]:= vetortempo[i] - 1;
-			if vetortempo[i] == 1 then ### 
-			{
+			let docas_in[i]:= docas_in[i] - 1;
+			if docas_in[i] == 0 then ### 
+			{	
 				for {ii in 1..nv2}
 				{
-					if S[ii, i] == 1 then
+					if S[ii, docas_in_ind[i]] == 1 then
 					{
-						let S[ii, i] := 0;
-						display S;
+						let S[ii, docas_in_ind[i]] := 0;
 					}
 				}
+			display S;
 			}
 		}
 	}
@@ -178,8 +204,8 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 				if coluna == nv1 then
 				{	
 					display d[jj];
-					let menortempo2 := min{ii in 1..nv2}d[ii];	
-					for{i in 1..nv2}
+					let menortempo2 := min{i in 1..nv2}d[i];	
+					for{ii in 1..nv2}
 					{	
 					#	if d[jj] <= time then
 					#	{
@@ -189,7 +215,16 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 								display d[jj];
 								let ind2 := jj; #caminhão com a menor data de chegada
 								display ind2;
-								let vetortempo2[ind2] := p2[ind2]; #tempo que o caminhão gasta p/ descarregar
+								for{i in 1..maq2}
+								{
+									if docas_out[i] == 0 then #tempo que o caminhão gasta p/ descarregar
+									{
+										let docas_out[i] := p2[ind2];
+										let docas_out_ind[i] := ind2;
+										break;
+									}
+								}
+								#let vetortempo2[ind2] := p2[ind2]; #tempo que o caminhão gasta p/ descarregar
 								let cont_full2:= 0;
 									
 								let doca2 := doca2 - 1; #doca foi ocupada
@@ -210,9 +245,9 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 								{
 									let cont_doca2 := 0; 
 									let docaslivres2 := 0;
-									for{ii in 1..nv2}
+									for{i in 1..maq2}
 									{
-										if vetortempo2[ii] != 0 then #quantos valores tem diferente de 0
+										if docas_out[i] != 0 then #quantos valores tem diferente de 0
 										{
 											let cont_doca2:= cont_doca2 + 1; #se o valor no vetor tempo não for zero, conta a doca
 											let docaslivres2 := totaldocas2 - cont_doca2;	
@@ -224,9 +259,9 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 						if cont_full2 != 100 then
 						{
 							let cont_full2:= 0;
-							for{ii in 1..nv2}
+							for{i in 1..maq2}
 							{
-								if vetortempo2[ii] == 0 then #quantos valores tem diferente de 0
+								if docas_out[i] == 0 then #quantos valores tem diferente de 0
 								{
 									let cont_full2:= cont_full2 + 1; #se o valor no vetor tempo for zero
 								}
@@ -237,12 +272,21 @@ repeat while saida == 0 #repetir enquanto saida for igual a 0
 							}
 						}
 					}
-					for{ii in 1..nv2}
+					for{i in 1..maq2}
 					{
-						if vetortempo2[ii] != 0 then #utilizado reduzir o tempo no descarregamento
+						if docas_out[i] == 0 then #tempo que o caminhão gasta p/ descarregar
+						{			
+							let docas_out_ind[i] := 0;
+						}
+					}
+					display docas_out;
+					display docas_out_ind;
+					for{i in 1..maq2}
+					{
+						if docas_out[i] != 0 then #utilizado reduzir o tempo no descarregamento
 						{
-							let vetortempo2[ii]:= vetortempo2[ii] - 1;
-							display vetortempo2;
+							let docas_out[i]:= docas_out[i] - 1;
+							display docas_out;
 						}
 					}
 				}
