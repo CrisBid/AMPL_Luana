@@ -55,15 +55,19 @@ param cont_doca2; #utilizado para contar quantos valores no vetor tempo estão pr
 param cont_full2; #utilizado para contar quantos valores no vetor tempo não estão preenchidos
 param docasocupadas2; #docas ocupadas
 param menortempo2; #para analisar qual tem menor tempo de data limite
+param menortempo2_ind; #para salvar o indice do valor de menor data limite 
+
 param docaslivres2; #para analisar as docas livres
 param totaldocas2; #o total de docas de saida
 param indice;
+param ultimo;
 param docas_in{i in 1..maq1}; #docas de entrada
 param docas_in_ind{i in 1..maq1}; #indice das docas de entrada
 param docas_out{i in 1..maq2}; #docas de saida
 param docas_out_ind{i in 1..maq2}; #indice das docas de saida
 param docas_esp{i in 1..nv2}; #para analisar quem já pode carregar, porque os caminhões referentes foram descarregados
 param docas_esp_ind{i in 1..nv2}; #indice relativo a quem já pode carregar
+param docas_test{i in 1..nv2}; #para analisar quem já pode carregar, porque os caminhões referentes foram descarregados
 
 let saida:= 0;
 let time:= 1;
@@ -76,6 +80,9 @@ let saida2:= 0;
 let cont_doca2:= 0;
 let cont_full2:= 100;
 let docaslivres2:=1;
+let menortempo2 := 0;
+let menortempo2_ind := 0;
+let ultimo := 0;
 
 let {i in 1..maq1} docas_in[i] := 0;  #todos começam com zero
 let {i in 1..maq1} docas_in_ind[i] := 0;  #todos começam com zero
@@ -83,6 +90,7 @@ let {i in 1..maq2} docas_out[i] := 0;  #todos começam com zero
 let {i in 1..maq2} docas_out_ind[i] := 0;  #todos começam com zero
 let {i in 1..nv2} docas_esp[i] := 1000;  #todos começam com valor alto, porque vou ter que utilizar minimo e zero atrapalharia
 let {i in 1..nv2} docas_esp_ind[i] := 0; #todos começam com zero
+let {i in 1..nv2} docas_test[i] := 1000;  #todos começam com valor alto, porque vou ter que utilizar minimo e zero atrapalharia
 
 let doca1 := maq1; #quantidade de docas
 let totaldocas := maq1; #quantidade de docas
@@ -92,7 +100,7 @@ let doca2 := maq2; #quantidade de docas
 let totaldocas2 := maq2; #quantidade de docas
 let docasocupadas2 := doca2 - 1; #utilizado quando tem uma doca disponível
 
-repeat while saida1 == 0 #repetir enquanto saida for igual a 0
+repeat while saida == 0 #repetir enquanto saida for igual a 0
 {
 	for{j in 1..nv1}
 	{	
@@ -208,7 +216,25 @@ repeat while saida1 == 0 #repetir enquanto saida for igual a 0
 						{
 							let docas_esp[i] := d[jj];
 							let docas_esp_ind[i] := jj;
-							let menortempo2 := min{ii in 1..nv2}docas_esp[ii];
+							
+							for{ii in 1..nv2} 
+							{
+								if menortempo2 == 0 then
+								{
+									let menortempo2 := docas_esp[ii];
+								}
+								if menortempo2 != 0 then
+								{
+									if menortempo2 > docas_esp[ii] then
+									{
+										let menortempo2 := docas_esp[ii];
+										let menortempo2_ind := ii;
+									}
+								}
+							}
+							
+							display menortempo2;
+							display menortempo2_ind;
 							break;
 						}
 					}
@@ -216,8 +242,6 @@ repeat while saida1 == 0 #repetir enquanto saida for igual a 0
 			}	
 		} let coluna := 0 ; 
 	} 
-	display docas_esp;
-	display docas_esp_ind;
 	for{j in 1..nv2}
 	{
 		if docas_esp[j] != 1000 then
@@ -229,23 +253,43 @@ repeat while saida1 == 0 #repetir enquanto saida for igual a 0
 					if d[ii] == menortempo2 then
 					{
 						display d[ii];
+						
+						if ultimo == menortempo2 then
+						{
+							if ii != ind2 then
+							{
+								for{jj in 1..nv2} 
+								{
+									if docas_esp[jj] == 1000 then 
+									{
+										let docas_esp[jj] := d[ii];
+										let docas_esp_ind[jj] := ii;
+										display 'AAAAAAAAA';
+										break;
+									}
+								}
+							}
+						}
+						
 						let ind2 := ii; #caminhão com a menor data de chegada
 						display ind2;
+						
 						for{i in 1..maq2}
 						{
 							if docas_out[i] == 0 then #tempo que o caminhão gasta p/ descarregar
 							{
 								let docas_out[i] := p2[ind2];
 								let docas_out_ind[i] := ind2;
+								let ultimo := d[ii];
 								break;
 							}
 						}
 						
-						let cont_full2:= 0;
-						display 'AAAAAAAAA'; 	
+						let cont_full2:= 0; 	
 						let doca2 := doca2 - 1; #doca foi ocupada
 						let d[ii]:= 1000; #se entrou na doca irá receber indice grande para não entrar novamente
 						display doca2;	
+						break;
 					}
 				}
 				if doca2 == 0 then #quando não tem mais docas disponíveis
@@ -294,18 +338,19 @@ repeat while saida1 == 0 #repetir enquanto saida for igual a 0
 					let docas_out_ind[i] := 0;
 				}
 			}
-			display docas_out;
-			display docas_out_ind;
 			for{i in 1..maq2}
 			{
 				if docas_out[i] != 0 then #utilizado reduzir o tempo no descarregamento
 				{
 					let docas_out[i]:= docas_out[i] - 1;
-					display docas_out;
 				}
 			} 
 		}
 	}
+	display docas_out;
+	display docas_out_ind;
+	display docas_esp;
+	display docas_esp_ind;
 }
 
 
